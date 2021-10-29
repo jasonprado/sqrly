@@ -1,6 +1,6 @@
 {
   "name": "sqrly",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Keep SQL files in your source tree and sync them to your Hasura-managed database",
   "scripts": {
     "start": "ts-node src/index.ts",
@@ -9,9 +9,7 @@
     "prepublish": "tsc"
   },
   "main": "dist/index.ts",
-  "bin": {
-    "sqrly": "dist/index.js"
-  },
+  "bin": "dist/index.js",
   "types": "dist/index.d.ts",
   "nodemonConfig": {
     "watch": [
