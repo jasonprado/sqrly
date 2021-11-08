@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import chalk from "chalk";
+import path from "path";
 import yargs from "yargs";
+import { promises as fs } from "fs";
 import { getDbClient, runSqlFile } from "./db";
 import { createHasuraMigration } from "./hasura";
 import { getModifiedSqlFiles } from "./repo";
@@ -76,6 +78,31 @@ const run = async () => {
           hasuraDatabaseName: argv["hasura-database-name"] as string,
           diffBase: argv["diff-base"] as string,
           dryRun: argv["dry-run"] as boolean,
+        });
+      },
+    })
+    .command({
+      command: "import",
+      aliases: ["i"],
+      describe: "Import a SQL function into a file",
+      builder: (yargs) => {
+        return yargs
+          .option("db", {
+            describe: "DSN-style URL to access Postgres DB",
+          })
+          .option("function-name", {
+            describe: "SQL function to import to file",
+          })
+          .option("out", {
+            describe: "Relative path to output file",
+          });
+      },
+      handler: async (argv) => {
+        await runImport({
+          dbUrl: argv["db"] as string,
+          functionName: argv["function-name"] as string,
+          sourcePath: argv.path as string,
+          outRelativePath: argv["out"] as string,
         });
       },
     })
@@ -156,6 +183,49 @@ const runMigrate = async ({
     dryRun: dryRun,
     log: console.log.bind(console),
   });
+};
+
+interface ImportArgs {
+  dbUrl: string;
+  functionName: string;
+  sourcePath: string;
+  outRelativePath: string;
+}
+const runImport = async ({
+  dbUrl,
+  functionName,
+  sourcePath,
+  outRelativePath,
+}: ImportArgs) => {
+  console.log(chalk.green("->"), `Importing function: ${functionName}`);
+
+  const db = await getDbClient(dbUrl);
+  console.log(functionName);
+  const functionTextResult = await db.query(
+    "select pg_get_functiondef(oid) from pg_proc where proname = $1",
+    [functionName]
+  );
+  if (
+    !(
+      functionTextResult &&
+      functionTextResult.rows &&
+      functionTextResult.rows[0]
+    )
+  ) {
+    console.log(chalk.red("->"), `Function not found: ${functionName}`);
+    throw new Error(`Function not found in DB: ${functionName}`);
+  }
+
+  console.log(chalk.green("->"), `Importing function: ${functionName}`);
+  const functionText = functionTextResult.rows[0].pg_get_functiondef;
+  const outpath = path.join(sourcePath, outRelativePath);
+  const outStream = await fs.open(outpath, "w");
+  outStream.writeFile(functionText);
+  outStream.close();
+
+  const numLines = functionText.split("\n").length;
+  console.log(chalk.green("->"), `Wrote: ${numLines} lines to ${outpath}`);
+  db.end();
 };
 
 run();

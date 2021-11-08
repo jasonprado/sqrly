@@ -66,8 +66,9 @@ $ sqrly migrate \
 Usage: sqrly <command> [options]
 
 Commands:
-  sqrly watch    Watch and apply changes in SQL files            [aliases: w]
-  sqrly migrate  Generate Hasura migrations for changed SQL files[aliases: m]
+  index.ts watch    Watch and apply changes in SQL files            [aliases: w]
+  index.ts migrate  Generate Hasura migrations for changed SQL files[aliases: m]
+  index.ts import   Import a SQL function into a file               [aliases: i]
 
 Options:
       --help     Show help                                             [boolean]
@@ -110,6 +111,22 @@ Options:
                                                    [string] [default: "default"]
       --diff-base             The git commit to diff against to find changed
                               .sql files              [string] [default: "HEAD"]
+```
+
+```
+sqrl import
+
+Import a SQL function into a file
+
+Options:
+      --help           Show help                                       [boolean]
+      --version        Show version number                             [boolean]
+  -p, --path           The path containing .sql files    [string] [default: "."]
+      --dry-run        Print commands that would run; don't actually run
+                                                      [boolean] [default: false]
+      --db             DSN-style URL to access Postgres DB
+      --function-name  SQL function to import to file
+      --out            Relative path to output file
 ```
 
 <!-- CONTRIBUTING -->
