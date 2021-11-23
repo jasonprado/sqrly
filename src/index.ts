@@ -5,7 +5,7 @@ import yargs from "yargs";
 import { promises as fs } from "fs";
 import { getDbClient, runSqlFile } from "./db";
 import { createHasuraMigration } from "./hasura";
-import { getModifiedSqlFiles } from "./repo";
+import { getMigrationFiles, getModifiedSqlFiles } from "./repo";
 import { watchPath } from "./watch";
 
 const run = async () => {
@@ -106,6 +106,32 @@ const run = async () => {
         });
       },
     })
+    .command({
+      command: "lint",
+      aliases: ["l"],
+      describe: "Verify that changed .sql files appear in hasura migrations",
+      builder: (yargs) => {
+        return yargs
+          .option("hasura-dir", {
+            describe: "Path to hasura schema directory",
+            type: "string",
+          })
+          .option("diff-base", {
+            describe:
+              "The git commit to diff against to find changed .sql files",
+            default: "HEAD",
+            type: "string",
+          });
+      },
+      handler: async (argv) => {
+        await runLint({
+          name: argv.name as string,
+          sourcePath: argv.path as string,
+          hasuraDir: argv["hasura-dir"] as string,
+          diffBase: argv["diff-base"] as string,
+        });
+      },
+    })
     .demandCommand()
     .parseAsync();
 };
@@ -168,7 +194,7 @@ const runMigrate = async ({
   console.log(chalk.green("->"), `Generating migration: ${name}`);
 
   const changedFiles = await getModifiedSqlFiles(sourcePath, diffBase);
-  if (!changedFiles) {
+  if (!changedFiles.length) {
     console.log(chalk.green("->"), `No modified SQL files found. Exiting.`);
     return;
   }
@@ -226,6 +252,52 @@ const runImport = async ({
   const numLines = functionText.split("\n").length;
   console.log(chalk.green("->"), `Wrote: ${numLines} lines to ${outpath}`);
   db.end();
+};
+
+interface LintArgs {
+  name: string;
+  sourcePath: string;
+  hasuraDir: string;
+  diffBase: string;
+}
+const runLint = async ({ name, sourcePath, hasuraDir, diffBase }: LintArgs) => {
+  console.log(
+    chalk.green("->"),
+    `Linting changed files under ${sourcePath} against migrations in ${hasuraDir}`
+  );
+
+  const changedFiles = await getModifiedSqlFiles(sourcePath, diffBase);
+  const migrationFiles = await getMigrationFiles(hasuraDir, diffBase);
+
+  if (!changedFiles.length) {
+    console.log(chalk.green("->"), `No modified SQL files found. Exiting.`);
+    return;
+  }
+  console.log(chalk.green("->"), `Found modified files:`);
+  console.log(changedFiles);
+
+  console.log(chalk.green("->"), `Found migrations:`);
+  console.log(migrationFiles);
+
+  const migrationFileContents = await Promise.all(
+    migrationFiles.map((f) => fs.readFile(f))
+  );
+  const allMigrationContent = migrationFileContents.reduce(
+    (res, buf) => res + buf.toString(),
+    ""
+  );
+
+  const missingMigrations = changedFiles.filter(
+    (f) => !allMigrationContent.includes(`-- ${path.basename(f)}`)
+  );
+  if (missingMigrations.length) {
+    console.log(
+      chalk.red("->"),
+      `Found modified files not referenced in migrations:`
+    );
+    console.log(missingMigrations);
+    process.exitCode = 1;
+  }
 };
 
 run();
