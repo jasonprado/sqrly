@@ -5,7 +5,8 @@ export async function getModifiedSqlFiles(
   sourcePath: string,
   diffBase: string
 ) {
-  const git: SimpleGit = simpleGit(sourcePath);
+  const normalSourcePath = path.normalize(sourcePath);
+  const git: SimpleGit = simpleGit(normalSourcePath);
   const root = await git.revparse("--show-toplevel");
   const modifiedFiles = new Set<string>();
 
@@ -13,11 +14,13 @@ export async function getModifiedSqlFiles(
 
   diffSummary.files
     .map((f) => f.file)
+    .filter((f) => path.join(root, f).startsWith(normalSourcePath))
     .filter((f) => f.toLowerCase().endsWith(".sql"))
     .forEach((f) => modifiedFiles.add(f));
 
   const status = await git.status();
   status.not_added
+    .filter((f) => path.join(root, f).startsWith(normalSourcePath))
     .filter((f) => f.toLowerCase().endsWith(".sql"))
     .forEach((f) => modifiedFiles.add(f));
 
