@@ -8,6 +8,11 @@ import { createHasuraMigration } from "./hasura";
 import { getMigrationFiles, getModifiedSqlFiles } from "./repo";
 import { watchPath } from "./watch";
 
+process.on('unhandledRejection', (error) => {
+  console.error(error);
+  process.exit(1);
+});
+
 const run = async () => {
   await yargs
     .usage("Usage: $0 <command> [options]")
