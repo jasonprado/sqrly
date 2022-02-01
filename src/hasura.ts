@@ -63,10 +63,12 @@ export async function createHasuraMigration({
         "migrate",
         "create",
         name,
-        "--sql-from-file",
-        concatenatedSqlFilePath,
         "--database-name",
         hasuraDatabaseName,
+        "--sql-from-file",
+        concatenatedSqlFilePath,
+        "--down-sql",
+        '"select 1;\n"',
       ];
 
       log(
