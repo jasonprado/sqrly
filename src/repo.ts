@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import path from "path";
 import simpleGit, { SimpleGit } from "simple-git";
 
@@ -27,6 +28,7 @@ export async function getModifiedSqlFiles(
   // Filter out hasura migrations that may be included.
   return Array.from(modifiedFiles)
     .filter((subpath) => !subpath.includes("migrations/"))
+    .filter((subpath) => existsSync(path.join(root, subpath)))
     .map((subpath) => path.join(root, subpath));
 }
 
